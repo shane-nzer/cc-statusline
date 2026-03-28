@@ -91,15 +91,16 @@ process.stdin.on('end', () => {
     line2 = parts.join(` ${DIM}|${RESET} `);
   }
 
-  // Line 3: Context usage (all cyan)
+  // Line 3: Context usage as progress bar
   let line3 = '';
   const ctx = d.context_window;
   if (ctx) {
     const pct    = Math.round(ctx.used_percentage || 0);
+    const { filled, empty } = createBar(pct);
     const cu     = ctx.current_usage;
     const inTok  = cu ? formatTokens(cu.input_tokens) : '--';
     const outTok = cu ? formatTokens(cu.output_tokens) : '--';
-    line3 = `${TEAL}Ctx(u): ${pct}% | In: ${inTok} | Out: ${outTok}${RESET}`;
+    line3 = `${TEAL}Ctx: ${filled}${DARK_GREY}${empty}${RESET} ${TEAL}${pct}% (In: ${inTok} | Out: ${outTok})${RESET}`;
   }
 
   // Line 4: version | model
