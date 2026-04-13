@@ -15,6 +15,7 @@ const BRIGHT_WHITE = '\x1b[97m';
 const YELLOW       = '\x1b[33m';
 const DARK_GREY    = '\x1b[90m';
 const BRIGHT_BLUE  = '\x1b[94m';
+const CAVEMAN      = '\x1b[38;5;172m';
 
 // Usage threshold colours (for filled bar + percentage)
 function usageColor(pct) {
@@ -103,11 +104,24 @@ process.stdin.on('end', () => {
     line3 = `${TEAL}Ctx: ${filled}${DARK_GREY}${empty}${RESET} ${TEAL}${pct}% (In: ${inTok} | Out: ${outTok})${RESET}`;
   }
 
+  // Caveman badge
+  let cavemanBadge = '';
+  try {
+    const fs = require('fs');
+    const flagFile = `${process.env.HOME}/.claude/.caveman-active`;
+    if (fs.existsSync(flagFile)) {
+      const mode = fs.readFileSync(flagFile, 'utf8').trim();
+      const suffix = (!mode || mode === 'full') ? '' : `:${mode.toUpperCase()}`;
+      cavemanBadge = `${CAVEMAN}[CAVEMAN${suffix}]${RESET}`;
+    }
+  } catch {}
+
   // Line 4: version | model
   let line4 = '';
   const parts4 = [];
   if (version) parts4.push(`${DIM}v${version}${RESET}`);
   if (model)   parts4.push(`${BRIGHT_BLUE}${model}${RESET}`);
+  if (cavemanBadge) parts4.push(cavemanBadge);
   if (parts4.length) line4 = parts4.join(` ${DIM}|${RESET} `);
 
   [line1, line2, line3, line4].filter(Boolean).forEach(l => console.log(l));
