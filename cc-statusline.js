@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
+const fs = require('fs');
+const https = require('https');
 
 const RESET        = '\x1b[0m';
 const DIM          = '\x1b[2m';
@@ -15,7 +17,9 @@ const BRIGHT_WHITE = '\x1b[97m';
 const YELLOW       = '\x1b[33m';
 const DARK_GREY    = '\x1b[90m';
 const BRIGHT_BLUE  = '\x1b[94m';
+const PURPLE       = '\x1b[38;5;171m';
 const CAVEMAN      = '\x1b[38;5;172m';
+const UPDATE       = '\x1b[38;5;214m';
 
 // Usage threshold colours (for filled bar + percentage)
 function usageColor(pct) {
@@ -46,6 +50,12 @@ function formatResetTime(unixSecs, includeDay = false) {
   h = h % 12 || 12;
   const mStr = mins > 0 ? `:${mins.toString().padStart(2, '0')}` : '';
   return `${dayStr}${h}${mStr}${period}`;
+}
+
+function isNewer(current, candidate) {
+  const p = v => v.replace(/[^0-9.]/g, '').split('.').map(Number);
+  const [a1, a2, a3] = p(current), [b1, b2, b3] = p(candidate);
+  return b1 > a1 || (b1 === a1 && b2 > a2) || (b1 === a1 && b2 === a2 && b3 > a3);
 }
 
 function formatTokens(n) {
@@ -107,20 +117,53 @@ process.stdin.on('end', () => {
   // Caveman badge
   let cavemanBadge = '';
   try {
-    const fs = require('fs');
     const flagFile = `${process.env.HOME}/.claude/.caveman-active`;
     if (fs.existsSync(flagFile)) {
       const mode = fs.readFileSync(flagFile, 'utf8').trim();
       const suffix = (!mode || mode === 'full') ? '' : `:${mode.toUpperCase()}`;
-      cavemanBadge = `${CAVEMAN}[CAVEMAN${suffix}]${RESET}`;
+      cavemanBadge = `${BRIGHT_BLUE}[CAVEMAN${suffix}]${RESET}`;
+    }
+  } catch {}
+
+  // Update badge: check npm registry for newer Claude Code version (cached, 4hr TTL)
+  let updateBadge = '';
+  try {
+    const cachePath = `${process.env.HOME}/.claude/.cc-version-cache`;
+    const TTL = 4 * 60 * 60 * 1000;
+    let cached = null;
+    try { cached = JSON.parse(fs.readFileSync(cachePath, 'utf8')); } catch {}
+
+    if (!cached || Date.now() - cached.checkedAt > TTL) {
+      const child = spawn(process.execPath, ['-e', `
+        const https = require('https');
+        const fs = require('fs');
+        https.get('https://registry.npmjs.org/@anthropic-ai/claude-code/latest', res => {
+          let d = ''; res.on('data', c => d += c); res.on('end', () => {
+            try {
+              const v = JSON.parse(d).version;
+              const tmp = ${JSON.stringify(cachePath + '.tmp')};
+              fs.writeFileSync(tmp, JSON.stringify({ latest: v, checkedAt: Date.now() }));
+              fs.renameSync(tmp, ${JSON.stringify(cachePath)});
+            } catch {}
+          });
+        }).on('error', () => {});
+      `], { detached: true, stdio: 'ignore' });
+      child.unref();
+    }
+
+    if (cached?.latest && version && isNewer(version, cached.latest)) {
+      updateBadge = `${UPDATE}↑ v${cached.latest}${RESET}`;
     }
   } catch {}
 
   // Line 4: version | model
   let line4 = '';
   const parts4 = [];
-  if (version) parts4.push(`${DIM}v${version}${RESET}`);
-  if (model)   parts4.push(`${BRIGHT_BLUE}${model}${RESET}`);
+  if (version) {
+    const upStr = updateBadge ? ` ${UPDATE}(↑ UPDATE AVAILABLE)${RESET}` : '';
+    parts4.push(`${DIM}v${version}${RESET}${upStr}`);
+  }
+  if (model)        parts4.push(`${PURPLE}${model}${RESET}`);
   if (cavemanBadge) parts4.push(cavemanBadge);
   if (parts4.length) line4 = parts4.join(` ${DIM}|${RESET} `);
 
