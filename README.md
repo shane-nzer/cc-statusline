@@ -27,9 +27,8 @@ chmod +x cc-statusline.js
 
 ```
 ~/Dev/my-project | ⎇ main (+0,-0)
-5hr: ░░░░░░░░░░ 0% (4pm) | Wk: █▋░░░░░░░░ 16% (Tue 12pm)
-Ctx: ██░░░░░░░░ 25% (In: 49.1k | Out: 13.1k)
+Ctx: 25% | 5h: ░░░░░░░░░░ 0% (4pm) | Wk: █▋░░░░░░░░ 16% (Tue 12pm)
 v2.1.80 | Sonnet 4.6 | [CAVEMAN]
 ```
 
-Line 4 shows `[CAVEMAN]` only when [caveman mode](https://github.com/JuliusBrussee/caveman) is active. Supports `[CAVEMAN:LITE]` and `[CAVEMAN:ULTRA]` variants.
+Line 3 shows `[CAVEMAN]` only when [caveman mode](https://github.com/JuliusBrussee/caveman) is active. Supports `[CAVEMAN:LITE]` and `[CAVEMAN:ULTRA]` variants.

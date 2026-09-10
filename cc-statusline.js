@@ -58,11 +58,6 @@ function isNewer(current, candidate) {
   return b1 > a1 || (b1 === a1 && b2 > a2) || (b1 === a1 && b2 === a2 && b3 > a3);
 }
 
-function formatTokens(n) {
-  if (n == null || isNaN(n)) return '--';
-  return parseFloat((n / 1000).toFixed(1)) + 'k';
-}
-
 let raw = '';
 process.stdin.on('data', chunk => raw += chunk);
 process.stdin.on('end', () => {
@@ -86,12 +81,19 @@ process.stdin.on('end', () => {
     line1 += ` ${DIM}|${RESET} ${DARK_YELLOW}⎇ ${branch} (${GIT_GREEN}+${added}${DARK_YELLOW},${GIT_RED}-${removed}${DARK_YELLOW})${RESET}`;
   } catch {}
 
-  // Line 2: 5hr | Wk rate limits
+  // Line 2: Ctx % | 5h | Wk rate limits
   let line2 = '';
+  const parts = [];
+
+  const ctx = d.context_window;
+  if (ctx) {
+    const pct = Math.round(ctx.used_percentage || 0);
+    parts.push(`${TEAL}Ctx: ${pct}%${RESET}`);
+  }
+
   const rl = d.rate_limits;
   if (rl) {
-    const parts = [];
-    for (const [label, window, includeDay] of [['5hr', rl.five_hour, false], ['Wk', rl.seven_day, true]]) {
+    for (const [label, window, includeDay] of [['5h', rl.five_hour, false], ['Wk', rl.seven_day, true]]) {
       if (!window) continue;
       const pct   = Math.round(window.used_percentage || 0);
       const color = usageColor(pct);
@@ -99,20 +101,8 @@ process.stdin.on('end', () => {
       const time  = formatResetTime(window.resets_at, includeDay);
       parts.push(`${BRIGHT_WHITE}${label}: ${color}${filled}${DARK_GREY}${empty}${RESET} ${color}${pct}%${RESET} ${BRIGHT_WHITE}(${time})${RESET}`);
     }
-    line2 = parts.join(` ${DIM}|${RESET} `);
   }
-
-  // Line 3: Context usage as progress bar
-  let line3 = '';
-  const ctx = d.context_window;
-  if (ctx) {
-    const pct    = Math.round(ctx.used_percentage || 0);
-    const { filled, empty } = createBar(pct);
-    const cu     = ctx.current_usage;
-    const inTok  = cu ? formatTokens(cu.input_tokens) : '--';
-    const outTok = cu ? formatTokens(cu.output_tokens) : '--';
-    line3 = `${TEAL}Ctx: ${filled}${DARK_GREY}${empty}${RESET} ${TEAL}${pct}% (In: ${inTok} | Out: ${outTok})${RESET}`;
-  }
+  if (parts.length) line2 = parts.join(` ${DIM}|${RESET} `);
 
   // Caveman badge
   let cavemanBadge = '';
@@ -156,16 +146,16 @@ process.stdin.on('end', () => {
     }
   } catch {}
 
-  // Line 4: version | model
-  let line4 = '';
-  const parts4 = [];
+  // Line 3: version | model
+  let line3 = '';
+  const parts3 = [];
   if (version) {
     const upStr = updateBadge ? ` ${UPDATE}(↑ UPDATE AVAILABLE)${RESET}` : '';
-    parts4.push(`${DIM}v${version}${RESET}${upStr}`);
+    parts3.push(`${DIM}v${version}${RESET}${upStr}`);
   }
-  if (model)        parts4.push(`${PURPLE}${model}${RESET}`);
-  if (cavemanBadge) parts4.push(cavemanBadge);
-  if (parts4.length) line4 = parts4.join(` ${DIM}|${RESET} `);
+  if (model)        parts3.push(`${PURPLE}${model}${RESET}`);
+  if (cavemanBadge) parts3.push(cavemanBadge);
+  if (parts3.length) line3 = parts3.join(` ${DIM}|${RESET} `);
 
-  [line1, line2, line3, line4].filter(Boolean).forEach(l => console.log(l));
+  [line1, line2, line3].filter(Boolean).forEach(l => console.log(l));
 });
