@@ -12,14 +12,21 @@ const DARK_YELLOW  = '\x1b[38;5;136m';
 const GIT_GREEN    = '\x1b[38;5;28m';
 const GIT_RED      = '\x1b[38;5;203m';
 const CYAN         = '\x1b[36m';
-const TEAL         = '\x1b[38;5;30m';
-const BRIGHT_WHITE = '\x1b[97m';
+const LABEL        = '\x1b[38;5;245m';
+const TIME         = '\x1b[38;5;240m';
 const YELLOW       = '\x1b[33m';
 const DARK_GREY    = '\x1b[90m';
 const BRIGHT_BLUE  = '\x1b[94m';
 const PURPLE       = '\x1b[38;5;171m';
 const CAVEMAN      = '\x1b[38;5;172m';
 const UPDATE       = '\x1b[38;5;214m';
+
+// Context threshold colours: green to 15%, orange 16-19%, red above
+function ctxColor(pct) {
+  if (pct >= 20) return '\x1b[91m';
+  if (pct >= 16) return '\x1b[38;5;214m';
+  return '\x1b[92m';
+}
 
 // Usage threshold colours (for filled bar + percentage)
 function usageColor(pct) {
@@ -88,7 +95,7 @@ process.stdin.on('end', () => {
   const ctx = d.context_window;
   if (ctx) {
     const pct = Math.round(ctx.used_percentage || 0);
-    parts.push(`${TEAL}Ctx: ${pct}%${RESET}`);
+    parts.push(`${LABEL}Ctx: ${RESET}${ctxColor(pct)}${pct}%${RESET}`);
   }
 
   const rl = d.rate_limits;
@@ -99,7 +106,7 @@ process.stdin.on('end', () => {
       const color = usageColor(pct);
       const { filled, empty } = createBar(pct);
       const time  = formatResetTime(window.resets_at, includeDay);
-      parts.push(`${BRIGHT_WHITE}${label}: ${color}${filled}${DARK_GREY}${empty}${RESET} ${color}${pct}%${RESET} ${BRIGHT_WHITE}(${time})${RESET}`);
+      parts.push(`${LABEL}${label}: ${RESET}${color}${filled}${DARK_GREY}${empty}${RESET} ${color}${pct}%${RESET} ${TIME}(${time})${RESET}`);
     }
   }
   if (parts.length) line2 = parts.join(` ${DIM}|${RESET} `);
