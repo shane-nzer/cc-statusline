@@ -91,24 +91,29 @@ process.stdin.on('end', () => {
   let line2 = '';
   const parts = [];
 
-  const ctx = d.context_window;
-  if (ctx) {
-    const pct = Math.round(ctx.used_percentage || 0);
+  // Always show Ctx, 5h and Wk; use '--' when Claude Code hasn't sent the value yet
+  const ctxPct = d.context_window?.used_percentage;
+  if (ctxPct == null) {
+    parts.push(`${LABEL}Ctx: ${RESET}${DARK_GREY}--${RESET}`);
+  } else {
+    const pct = Math.round(ctxPct);
     parts.push(`${LABEL}Ctx: ${RESET}${ctxColor(pct)}${pct}%${RESET}`);
   }
 
-  const rl = d.rate_limits;
-  if (rl) {
-    for (const [label, window, includeDay] of [['5h', rl.five_hour, false], ['Wk', rl.seven_day, true]]) {
-      if (!window) continue;
-      const pct   = Math.round(window.used_percentage || 0);
-      const color = usageColor(pct);
-      const { filled, empty } = createBar(pct);
-      const time  = formatResetTime(window.resets_at, includeDay);
-      parts.push(`${LABEL}${label}: ${RESET}${color}${filled}${DARK_GREY}${empty}${RESET} ${color}${pct}%${RESET} ${TIME}(${time})${RESET}`);
+  const rl = d.rate_limits || {};
+  for (const [label, window, includeDay] of [['5h', rl.five_hour, false], ['Wk', rl.seven_day, true]]) {
+    const time = formatResetTime(window?.resets_at, includeDay);
+    if (window?.used_percentage == null) {
+      const { empty } = createBar(0);
+      parts.push(`${LABEL}${label}: ${RESET}${DARK_GREY}${empty} --${RESET} ${TIME}(${time})${RESET}`);
+      continue;
     }
+    const pct   = Math.round(window.used_percentage);
+    const color = usageColor(pct);
+    const { filled, empty } = createBar(pct);
+    parts.push(`${LABEL}${label}: ${RESET}${color}${filled}${DARK_GREY}${empty}${RESET} ${color}${pct}%${RESET} ${TIME}(${time})${RESET}`);
   }
-  if (parts.length) line2 = parts.join(` ${DIM}|${RESET} `);
+  line2 = parts.join(` ${DIM}|${RESET} `);
 
   // Update badge: check npm registry for newer Claude Code version (cached, 4hr TTL)
   let updateBadge = '';
