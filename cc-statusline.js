@@ -34,6 +34,7 @@ function usageColor(pct) {
 }
 
 function createBar(pct, length = 10) {
+  pct = Math.min(Math.max(pct, 0), 100);
   const eighths = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
   const total = Math.round((pct / 100) * length * 8);
   const full = Math.floor(total / 8);
