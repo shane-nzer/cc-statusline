@@ -1,6 +1,6 @@
 # cc-statusline
 
-A Claude Code statusline script displaying subscription usage, context window, git info, and [caveman mode](https://github.com/JuliusBrussee/caveman) status.
+A Claude Code statusline script displaying subscription usage, context window, and git info.
 
 ## Setup
 
@@ -28,7 +28,5 @@ chmod +x cc-statusline.js
 ```
 ~/Dev/my-project | ⎇ main (+0,-0)
 Ctx: 25% | 5h: ░░░░░░░░░░ 0% (4pm) | Wk: █▋░░░░░░░░ 16% (Tue 12pm)
-v2.1.80 | Sonnet 4.6 | [CAVEMAN]
+v2.1.80 | Sonnet 4.6
 ```
-
-Line 3 shows `[CAVEMAN]` only when [caveman mode](https://github.com/JuliusBrussee/caveman) is active. Supports `[CAVEMAN:LITE]` and `[CAVEMAN:ULTRA]` variants.

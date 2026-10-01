@@ -16,9 +16,7 @@ const LABEL        = '\x1b[38;5;245m';
 const TIME         = '\x1b[38;5;240m';
 const YELLOW       = '\x1b[33m';
 const DARK_GREY    = '\x1b[90m';
-const BRIGHT_BLUE  = '\x1b[94m';
 const PURPLE       = '\x1b[38;5;171m';
-const CAVEMAN      = '\x1b[38;5;172m';
 const UPDATE       = '\x1b[38;5;214m';
 
 // Context threshold colours: green to 15%, orange 16-19%, red above
@@ -111,17 +109,6 @@ process.stdin.on('end', () => {
   }
   if (parts.length) line2 = parts.join(` ${DIM}|${RESET} `);
 
-  // Caveman badge
-  let cavemanBadge = '';
-  try {
-    const flagFile = `${process.env.HOME}/.claude/.caveman-active`;
-    if (fs.existsSync(flagFile)) {
-      const mode = fs.readFileSync(flagFile, 'utf8').trim();
-      const suffix = (!mode || mode === 'full') ? '' : `:${mode.toUpperCase()}`;
-      cavemanBadge = `${BRIGHT_BLUE}[CAVEMAN${suffix}]${RESET}`;
-    }
-  } catch {}
-
   // Update badge: check npm registry for newer Claude Code version (cached, 4hr TTL)
   let updateBadge = '';
   try {
@@ -161,7 +148,6 @@ process.stdin.on('end', () => {
     parts3.push(`${DIM}v${version}${RESET}${upStr}`);
   }
   if (model)        parts3.push(`${PURPLE}${model}${RESET}`);
-  if (cavemanBadge) parts3.push(cavemanBadge);
   if (parts3.length) line3 = parts3.join(` ${DIM}|${RESET} `);
 
   [line1, line2, line3].filter(Boolean).forEach(l => console.log(l));
