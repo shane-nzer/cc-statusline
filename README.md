@@ -36,6 +36,7 @@ Pass flags after the script path in `statusLine.command`:
 | `--ctx-crit-color` | bright red | Ctx colour at or above crit |
 | `--ctx-warn` | `26` | Percentage where the warn colour starts |
 | `--ctx-crit` | `30` | Percentage where the crit colour starts |
+| `--5h-reset` | `duration` | 5h reset as time remaining (`duration`, e.g. `in 2h 15m`) or clock time (`time`, e.g. `4pm`) |
 
 Colours accept a 256-colour index (`0`–`255`) or hex (`#rrggbb`, needs a truecolour terminal). Invalid values fall back to the default.
 
@@ -45,6 +46,6 @@ Colours accept a 256-colour index (`0`–`255`) or hex (`#rrggbb`, needs a truec
 
 ```
 ~/Dev/my-project | ⎇ main (+0,-0)
-Ctx: 25% | 5h: ░░░░░░░░░░ 0% (4pm) | Wk: █▋░░░░░░░░ 16% (Tue 12pm)
+Ctx: 25% | 5h: ░░░░░░░░░░ 0% (in 2h 15m) | Wk: █▋░░░░░░░░ 16% (Tue 12pm)
 v2.1.80 | Sonnet 4.6
 ```
