@@ -45,6 +45,7 @@ const CTX_WARN  = parseColor(args['ctx-warn-color'], '\x1b[38;5;214m');
 const CTX_CRIT  = parseColor(args['ctx-crit-color'], '\x1b[91m');
 const CTX_WARN_AT = parseNumber(args['ctx-warn'], 26);
 const CTX_CRIT_AT = parseNumber(args['ctx-crit'], 30);
+const FIVE_HOUR_RESET = args['5h-reset'] === 'time' ? 'time' : 'duration';
 
 // Context threshold colours: green below warn, orange below crit, red above
 function ctxColor(pct) {
@@ -83,6 +84,15 @@ function formatResetTime(unixSecs, includeDay = false) {
   h = h % 12 || 12;
   const mStr = mins > 0 ? `:${mins.toString().padStart(2, '0')}` : '';
   return `${dayStr}${h}${mStr}${period}`;
+}
+
+function formatTimeLeft(unixSecs) {
+  if (!unixSecs) return '--';
+  const mins = Math.ceil((unixSecs * 1000 - Date.now()) / 60000);
+  if (mins <= 0) return 'soon';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `in ${h}h ${m}m` : `in ${m}m`;
 }
 
 function isNewer(current, candidate) {
@@ -129,7 +139,9 @@ process.stdin.on('end', () => {
 
   const rl = d.rate_limits || {};
   for (const [label, window, includeDay] of [['5h', rl.five_hour, false], ['Wk', rl.seven_day, true]]) {
-    const time = formatResetTime(window?.resets_at, includeDay);
+    const time = label === '5h' && FIVE_HOUR_RESET === 'duration'
+      ? formatTimeLeft(window?.resets_at)
+      : formatResetTime(window?.resets_at, includeDay);
     if (window?.used_percentage == null) {
       const { empty } = createBar(0);
       parts.push(`${LABEL}${label}: ${RESET}${DARK_GREY}${empty} --${RESET} ${TIME}(${time})${RESET}`);
