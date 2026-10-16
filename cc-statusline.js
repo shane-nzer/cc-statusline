@@ -19,11 +19,38 @@ const DARK_GREY    = '\x1b[90m';
 const PURPLE       = '\x1b[38;5;171m';
 const UPDATE       = '\x1b[38;5;214m';
 
-// Context threshold colours: green to 15%, orange 16-19%, red above
+// CLI flags: --name=value
+const args = Object.fromEntries(
+  process.argv.slice(2)
+    .map(a => a.match(/^--([^=]+)=(.*)$/))
+    .filter(Boolean)
+    .map(([, k, v]) => [k, v])
+);
+
+// Colour flag value: 256-colour index (0-255) or hex (#rrggbb)
+function parseColor(value, fallback) {
+  if (/^\d{1,3}$/.test(value || '') && Number(value) <= 255) return `\x1b[38;5;${value}m`;
+  const hex = (value || '').match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (hex) return `\x1b[38;2;${hex.slice(1).map(h => parseInt(h, 16)).join(';')}m`;
+  return fallback;
+}
+
+function parseNumber(value, fallback) {
+  const n = Number(value);
+  return value != null && Number.isFinite(n) ? n : fallback;
+}
+
+const CTX_OK    = parseColor(args['ctx-ok-color'],   '\x1b[92m');
+const CTX_WARN  = parseColor(args['ctx-warn-color'], '\x1b[38;5;214m');
+const CTX_CRIT  = parseColor(args['ctx-crit-color'], '\x1b[91m');
+const CTX_WARN_AT = parseNumber(args['ctx-warn'], 26);
+const CTX_CRIT_AT = parseNumber(args['ctx-crit'], 30);
+
+// Context threshold colours: green below warn, orange below crit, red above
 function ctxColor(pct) {
-  if (pct >= 20) return '\x1b[91m';
-  if (pct >= 16) return '\x1b[38;5;214m';
-  return '\x1b[92m';
+  if (pct >= CTX_CRIT_AT) return CTX_CRIT;
+  if (pct >= CTX_WARN_AT) return CTX_WARN;
+  return CTX_OK;
 }
 
 // Usage threshold colours (for filled bar + percentage)
