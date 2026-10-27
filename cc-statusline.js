@@ -107,6 +107,22 @@ process.stdin.on('end', () => {
   let d;
   try { d = JSON.parse(raw); } catch { process.exit(0); }
 
+  // >>> Reign statusline v1 >>>
+  // Reign: pass Claude Code's context window to Reign. Does nothing outside a
+  // Reign pane. Follows REIGN_MODE so a dev build's panes report to dev Reign
+  // (Reign's own snippet is release-only, ~/.reign).
+  if (process.env.REIGN_PANE_ID) {
+    const reignDir = `${process.env.HOME}/.reign${process.env.REIGN_MODE === 'dev' ? '-dev' : ''}`;
+    const reign = spawn(`${reignDir}/hooks/notify`, ['--statusline'], {
+      detached: true, stdio: ['pipe', 'ignore', 'ignore'],
+    });
+    reign.on('error', () => {});
+    reign.stdin.on('error', () => {});
+    reign.stdin.end(raw);
+    reign.unref();
+  }
+  // <<< Reign statusline <<<
+
   const cwd     = d.workspace?.current_dir || d.cwd || '';
   const version = d.version || '';
   const model   = d.model?.display_name || '';
