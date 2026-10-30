@@ -18,6 +18,7 @@ const YELLOW       = '\x1b[33m';
 const DARK_GREY    = '\x1b[90m';
 const PURPLE       = '\x1b[38;5;171m';
 const UPDATE       = '\x1b[38;5;214m';
+const MARKER       = '\x1b[97m';
 
 // CLI flags: --name=value
 const args = Object.fromEntries(
@@ -46,6 +47,8 @@ const CTX_CRIT  = parseColor(args['ctx-crit-color'], '\x1b[91m');
 const CTX_WARN_AT = parseNumber(args['ctx-warn'], 26);
 const CTX_CRIT_AT = parseNumber(args['ctx-crit'], 30);
 const FIVE_HOUR_RESET = args['5h-reset'] === 'time' ? 'time' : 'duration';
+const USAGE_WARN_AT = parseNumber(args['usage-warn'], 90);
+const USAGE_CRIT_AT = parseNumber(args['usage-crit'], 120);
 
 // Context threshold colours: green below warn, orange below crit, red above
 function ctxColor(pct) {
@@ -54,22 +57,40 @@ function ctxColor(pct) {
   return CTX_OK;
 }
 
-// Usage threshold colours (for filled bar + percentage)
-function usageColor(pct) {
-  if (pct >= 90) return '\x1b[91m';
-  if (pct >= 70) return '\x1b[93m';
+// Fraction of the rate-limit window that has passed (0-1), or null without a reset time
+function elapsedFraction(resetsAt, windowSecs) {
+  if (!resetsAt) return null;
+  const left = resetsAt - Date.now() / 1000;
+  return Math.min(Math.max(1 - left / windowSecs, 0), 1);
+}
+
+// Usage colours by pace: projected use at reset if the current rate continues.
+// Absolute floors catch a nearly full window. Pace is ignored in the first 10%
+// of the window, where the projection swings too much to mean anything.
+function usageColor(pct, elapsed) {
+  const projected = elapsed >= 0.1 ? pct / elapsed : 0;
+  if (pct >= 95 || projected >= USAGE_CRIT_AT) return '\x1b[91m';
+  if (pct >= 80 || projected >= USAGE_WARN_AT) return '\x1b[93m';
   return '\x1b[92m';
 }
 
-function createBar(pct, length = 10) {
+// Bar with an optional pace marker on the cell where even-rate usage would end,
+// drawn over the fill so it stays visible when usage is ahead of pace
+function createBar(pct, color, elapsed = null, length = 10) {
   pct = Math.min(Math.max(pct, 0), 100);
-  const eighths = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
-  const total = Math.round((pct / 100) * length * 8);
-  const full = Math.floor(total / 8);
-  const rem = total % 8;
-  const partial = rem > 0 ? eighths[rem] : '';
-  const empty = length - full - (partial ? 1 : 0);
-  return { filled: '█'.repeat(full) + partial, empty: '░'.repeat(empty) };
+  const halves = Math.round((pct / 100) * length * 2);
+  const full = Math.floor(halves / 2);
+  const cells = [];
+  for (let i = 0; i < length; i++) {
+    if (i < full) cells.push(`${color}━`);
+    else if (i === full && halves % 2) cells.push(`${color}╸`);
+    else cells.push(`${DARK_GREY}─`);
+  }
+  if (elapsed != null) {
+    const i = Math.min(Math.max(Math.round(elapsed * length) - 1, 0), length - 1);
+    cells[i] = `${MARKER}│`;
+  }
+  return cells.join('') + RESET;
 }
 
 function formatResetTime(unixSecs, includeDay = false) {
@@ -154,19 +175,19 @@ process.stdin.on('end', () => {
   }
 
   const rl = d.rate_limits || {};
-  for (const [label, window, includeDay] of [['5h', rl.five_hour, false], ['Wk', rl.seven_day, true]]) {
+  const windows = [['5h', rl.five_hour, false, 5 * 3600], ['Wk', rl.seven_day, true, 7 * 86400]];
+  for (const [label, window, includeDay, windowSecs] of windows) {
     const time = label === '5h' && FIVE_HOUR_RESET === 'duration'
       ? formatTimeLeft(window?.resets_at)
       : formatResetTime(window?.resets_at, includeDay);
     if (window?.used_percentage == null) {
-      const { empty } = createBar(0);
-      parts.push(`${LABEL}${label}: ${RESET}${DARK_GREY}${empty} --${RESET} ${TIME}(${time})${RESET}`);
+      parts.push(`${LABEL}${label}: ${RESET}${createBar(0, DARK_GREY)} ${DARK_GREY}--${RESET} ${TIME}(${time})${RESET}`);
       continue;
     }
-    const pct   = Math.round(window.used_percentage);
-    const color = usageColor(pct);
-    const { filled, empty } = createBar(pct);
-    parts.push(`${LABEL}${label}: ${RESET}${color}${filled}${DARK_GREY}${empty}${RESET} ${color}${pct}%${RESET} ${TIME}(${time})${RESET}`);
+    const pct     = Math.round(window.used_percentage);
+    const elapsed = elapsedFraction(window.resets_at, windowSecs);
+    const color   = usageColor(pct, elapsed);
+    parts.push(`${LABEL}${label}: ${RESET}${createBar(pct, color, elapsed)} ${color}${pct}%${RESET} ${TIME}(${time})${RESET}`);
   }
   line2 = parts.join(` ${DIM}|${RESET} `);
 
